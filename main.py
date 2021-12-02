@@ -65,7 +65,7 @@ async def _remove_comics_channel(ctx:SlashContext,channel:discord.TextChannel):
 		guildsfile.write(','.join(guilds))
 	await ctx.send(f"{channel.name} will no longer receive an update when a comic comes out. :(")
 
-@tasks.loop(hours=2)
+@tasks.loop(minutes=30)
 async def check_for_new_comics():
 	async with aiohttp.ClientSession() as session:
 		async with session.get("https://xkcd.com/info.0.json") as r:
