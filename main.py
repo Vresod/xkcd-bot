@@ -1,12 +1,13 @@
 import discord
 from discord.ext import commands, tasks
 import aiohttp
+import random
 import logging
 
 import extra
 
 # global latest_comic
-latest_comic = extra.get_latest_comic()
+# latest_comic = extra.get_latest_comic()
 logging.basicConfig(level=logging.INFO)
 client = commands.Bot()
 latest_comic = 0
@@ -16,7 +17,7 @@ async def on_ready():
 	logging.info(f"Signed in as {client.user}")
 	check_for_new_comics.start()
 
-@client.slash_command(name="get_comic")
+@client.slash_command(name="get_comic",description="Retrieves the specified xkcd comic")
 async def _get_comic(ctx:discord.ApplicationContext,comic_number:int):
 	async with aiohttp.ClientSession() as session: # I personally feel this looks unclean but it does context managers so whatever
 		try:
@@ -32,22 +33,26 @@ async def _get_comic(ctx:discord.ApplicationContext,comic_number:int):
 	embed.description = f"explained: https://explainxkcd.com/{comic_number}"
 	await ctx.respond(embeds=[embed],view=extra.ControlsView())
 
-@client.slash_command(name="add_comics_channel")
+@client.slash_command(name="get_random_comic",description="Grabs a random comic from the xkcd catalogue")
+async def _get_random_comic(ctx:discord.ApplicationContext):
+	return await _get_comic(ctx,random.randint(1,latest_comic))
+
+@client.slash_command(name="add_comics_channel",description="Adds a channel to the list of channels that receives comics")
 @commands.has_guild_permissions(manage_channels=True)
 async def _add_comics_channel(ctx:discord.ApplicationContext,channel:discord.TextChannel):
 	if channel.type != discord.ChannelType.text:
 		await ctx.respond("Choose a channel that is a text channel.",ephemeral=True)
 		return
 	with open("guilds.txt","r") as guildsfile: # this whole structure sucks and i wish that i knew a better option
-		guilds = list(set(guildsfile.read().split(","))) # not memory efficent solution to remove duplicates
-		guilds.append(str(channel.id))
+		guilds = set(guildsfile.read().split(",")) # not memory efficent solution to remove duplicates
+		guilds.update(str(channel.id))
 		guilds = [i for i in guilds if i]
 	with open("guilds.txt","w") as guildsfile:
 		guildsfile.write(','.join(guilds))
 	await ctx.respond(f"{channel.name} will now receive an update when a comic comes out!")
 	logging.info(f"Comics channel {channel.id} added")
 
-@client.slash_command(name='remove_comics_channel')
+@client.slash_command(name='remove_comics_channel',description="Removes a channel from the list of channels the receieves comics")
 @commands.has_guild_permissions(manage_channels=True)
 async def _remove_comics_channel(ctx:discord.ApplicationContext,channel:discord.TextChannel):
 	if channel.type != discord.ChannelType.text:
@@ -78,13 +83,13 @@ async def check_for_new_comics():
 
 async def post_new_comics(comic):
 	with open("guilds.txt","r") as guildsfile:
-		guilds = guildsfile.read().split(",")
+		guilds = [int(i) for i in guildsfile.read().split(",")]
 	embed = discord.Embed(title=f"xkcd {comic['num']}: {comic['title']}",url=f"https://xkcd.com/{comic['num']}") # average 
 	embed.set_image(url=comic['img'])
 	embed.set_footer(text=comic['alt'])
 	embed.description = f"explained: https://explainxkcd.com/{comic['num']}"
 	for guild in guilds:
-		channel:discord.TextChannel = await client.fetch_channel(guild)
+		channel = await client.fetch_channel(guild)
 		await channel.send(embed=embed)
 
 def main():
