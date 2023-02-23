@@ -28,7 +28,8 @@ async def _get_comic(ctx:discord.ApplicationContext,comic_number:int):
 			await ctx.respond("Comic not found.",ephemeral=True)
 			return
 	embed = discord.Embed(title=f"xkcd {comic['num']}: {comic['title']}",url=f"https://xkcd.com/{comic_number}")
-	embed.set_image(url=comic['img'])
+	image_url = comic['img'][:-4] + "_2x.png"
+	embed.set_image(url=image_url)
 	embed.set_footer(text=comic['alt'])
 	embed.description = f"explained: https://explainxkcd.com/{comic_number}"
 	await ctx.respond(embeds=[embed],view=extra.ControlsView())
@@ -62,7 +63,7 @@ async def _remove_comics_channel(ctx:discord.ApplicationContext,channel:discord.
 		guilds = list(set(guildsfile.read().split(","))) # mess of parentheses; reader I can assure you i am not trying to write lisp
 		try:
 			guilds.remove(str(channel.id))
-		except ValueError: 
+		except ValueError:
 			await ctx.respond("That channel already wasn't receiving updates. :(",ephemeral=True)
 			return
 	with open("guilds.txt","w") as guildsfile:
@@ -84,8 +85,9 @@ async def check_for_new_comics():
 async def post_new_comics(comic):
 	with open("guilds.txt","r") as guildsfile:
 		guilds = [int(i) for i in guildsfile.read().split(",")]
-	embed = discord.Embed(title=f"xkcd {comic['num']}: {comic['title']}",url=f"https://xkcd.com/{comic['num']}") # average 
-	embed.set_image(url=comic['img'])
+	embed = discord.Embed(title=f"xkcd {comic['num']}: {comic['title']}",url=f"https://xkcd.com/{comic['num']}") # average
+	image_url = comic['img'][:-4] + "_2x.png"
+	embed.set_image(url=image_url)
 	embed.set_footer(text=comic['alt'])
 	embed.description = f"explained: https://explainxkcd.com/{comic['num']}"
 	for guild in guilds:
